@@ -1,39 +1,93 @@
 import { useEffect, useRef, useState } from "react";
 import type windowWrapper from "../../types/windowWrapper.types";
-import { motion, useDragControls } from "motion/react";
+import { motion, useDragControls, useMotionValue } from "motion/react";
 import "./windowWrapper.css";
 import useWindow from "../../store/windowStore";
+import type { position } from "../../types/windowStore.types";
 
 const WindowWrapper = (props: windowWrapper) => {
   const dragControls = useDragControls();
-
-  const { width, height, updateDimension } = useWindow();
-
+  const { width, height, updateDimension, position, setPosition } = useWindow();
   const [isResizing, setIsResizing] = useState<boolean>(false);
-
+  const top = useMotionValue(50);
+  const left = useMotionValue(100);
+  const [dragConstraints, setDragConstraints] = useState<{
+    [key: string]: number;
+  }>({});
   const dragRef = useRef({
-    left: 0,
     startWidth: 0,
+    startHeight: 0,
     startX: 0,
+    startY: 0,
   });
 
-  function handleResizeStart(evt: React.MouseEvent<HTMLDivElement>) {
+  function handleResizeStart(
+    evt: React.MouseEvent<HTMLDivElement>,
+    position: position,
+  ) {
     evt.preventDefault();
     setIsResizing(true);
+    setPosition(position);
+
     dragRef.current = {
-      left: evt.currentTarget.getBoundingClientRect().x,
       startWidth: width,
       startX: evt.clientX,
+      startHeight: height,
+      startY: evt.clientY,
     };
   }
+
   useEffect(() => {
     if (!isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      const delta = e.clientX - dragRef.current.startX;
-      const newWidth = dragRef.current.startWidth + delta;
-      updateDimension(Math.max(100, newWidth), undefined);
+      const deltaY = e.clientY - dragRef.current.startY;
+      const deltaX = e.clientX - dragRef.current.startX;
+      const newHeight = dragRef.current.startHeight + deltaY;
+      const updatedNewHeight = dragRef.current.startHeight - deltaY;
+      const newWidth = dragRef.current.startWidth + deltaX;
+      const updatedNewWidth = dragRef.current.startWidth - deltaX;
+      const newTop = dragRef.current.startY + deltaY;
+      const newLeft = dragRef.current.startX + deltaX;
+      switch (position) {
+        case "e":
+          updateDimension(Math.max(newWidth, 300), undefined);
+          break;
+        case "s":
+          updateDimension(undefined, Math.max(newHeight, 300));
+          break;
+        case "n":
+          updateDimension(undefined, Math.max(updatedNewHeight, 300));
+          if (updatedNewHeight > 300) top.set(newTop);
+          break;
+        case "w":
+          updateDimension(Math.max(updatedNewWidth, 300), undefined);
+          if (updatedNewWidth > 300) left.set(newLeft);
+          break;
+        case "ne":
+          updateDimension(undefined, Math.max(updatedNewHeight, 300));
+          if (updatedNewHeight > 300) top.set(newTop);
+          updateDimension(Math.max(newWidth, 300), undefined);
+          break;
+        case "nw":
+          updateDimension(undefined, Math.max(updatedNewHeight, 300));
+          if (updatedNewHeight > 300) top.set(newTop);
+          updateDimension(Math.max(updatedNewWidth, 300), undefined);
+          if (updatedNewWidth > 300) left.set(newLeft);
+          break;
+        case "sw":
+          updateDimension(undefined, Math.max(newHeight, 300));
+          updateDimension(Math.max(updatedNewWidth, 300), undefined);
+          if (updatedNewWidth > 300) left.set(newLeft);
+          break;
+        case "se":
+          updateDimension(undefined, Math.max(newHeight, 300));
+          updateDimension(Math.max(newWidth, 300), undefined);
+          break;
+
+        default:
+          break;
+      }
     };
 
     const handleMouseUp = () => {
@@ -44,11 +98,12 @@ const WindowWrapper = (props: windowWrapper) => {
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
-  }, [isResizing]);
 
-  const [dragConstraints, setDragConstraints] = useState<{
-    [key: string]: number;
-  }>({});
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
 
   return (
     <motion.section
@@ -60,22 +115,45 @@ const WindowWrapper = (props: windowWrapper) => {
       dragElastic={0}
       className="window"
       style={{
+        y: top,
+        x: left,
         width: width + "px",
         height: height + "px",
       }}
     >
       {/* Resize Constraints -- */}
-      <div className="resize-constraints resize-n"></div>
-      <div className="resize-constraints resize-w"></div>
+      <div
+        className="resize-constraints resize-n"
+        onMouseDown={(e) => handleResizeStart(e, "n")}
+      ></div>
+      <div
+        className="resize-constraints resize-w"
+        onMouseDown={(e) => handleResizeStart(e, "w")}
+      ></div>
       <div
         className="resize-constraints resize-e"
-        onMouseDown={(e) => handleResizeStart(e)}
+        onMouseDown={(e) => handleResizeStart(e, "e")}
       ></div>
-      <div className="resize-constraints resize-s"></div>
-      <div className="resize-constraints resize-ne"></div>
-      <div className="resize-constraints resize-nw"></div>
-      <div className="resize-constraints resize-se"></div>
-      <div className="resize-constraints resize-sw"></div>
+      <div
+        className="resize-constraints resize-s"
+        onMouseDown={(e) => handleResizeStart(e, "s")}
+      ></div>
+      <div
+        className="resize-constraints resize-ne"
+        onMouseDown={(e) => handleResizeStart(e, "ne")}
+      ></div>
+      <div
+        className="resize-constraints resize-nw"
+        onMouseDown={(e) => handleResizeStart(e, "nw")}
+      ></div>
+      <div
+        className="resize-constraints resize-se"
+        onMouseDown={(e) => handleResizeStart(e, "se")}
+      ></div>
+      <div
+        className="resize-constraints resize-sw"
+        onMouseDown={(e) => handleResizeStart(e, "sw")}
+      ></div>
       <motion.div
         onMouseDown={(e) => {
           const dimensions = {
