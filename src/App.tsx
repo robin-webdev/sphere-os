@@ -1,9 +1,14 @@
+import WindowWrapper from "./components/window/WindowWrapper";
+import "./app.css";
+
 const App = () => {
   return (
-    <div>
-      <div>Main App</div>
+    <div className="main">
+      <WindowWrapper>
+        <div></div>
+      </WindowWrapper>
     </div>
   );
 };
- 
+
 export default App;
