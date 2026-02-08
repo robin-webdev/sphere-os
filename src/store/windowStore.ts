@@ -1,19 +1,53 @@
 import { create } from "zustand";
-import type windowStore from "../types/windowStore.types.js";
+import type WindowStore from "../types/windowStore.types";
 
-const useWindow = create<windowStore>((set, get) => ({
-  width: 700,
-  height: 400,
-  position: null,
-  setPosition: (position) => {
-    set(() => ({ position }));
-  },
-  updateDimension: (width, height) => {
+const useWindowStore = create<WindowStore>((set) => ({
+  windows: {},
+  activeWindowId: null,
+  createWindow: (id, config = {}) =>
     set((state) => ({
-      width: width !== undefined ? width : state.width,
-      height: height !== undefined ? height : state.height,
-    }));
-  },
+      windows: {
+        ...state.windows,
+        [id]: {
+          id: id,
+          width: 700,
+          height: 400,
+          x: 70,
+          y: 40,
+          position: null,
+          isMinimized: false,
+          zIndex: 0,
+          ...config,
+        },
+      },
+    })),
+  updateWindow: (id, updates) =>
+    set((state) => ({
+      windows: {
+        ...state.windows,
+        [id]: {
+          ...state.windows[id],
+          ...updates,
+        },
+      },
+    })),
+  deleteWindow: (id) =>
+    set((state) => {
+      const { [id]: removed, ...remaining } = state.windows;
+      return { windows: remaining };
+    }),
+  setActiveWindow: (id) =>
+    set((state) => ({
+      activeWindowId: id,
+      windows: {
+        ...state.windows,
+        [id]: {
+          ...state.windows[id],
+          zIndex:
+            Math.max(...Object.values(state.windows).map((w) => w.zIndex)) + 1,
+        },
+      },
+    })),
 }));
 
-export default useWindow;
+export default useWindowStore;

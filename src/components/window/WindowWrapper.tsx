@@ -2,15 +2,38 @@ import { useEffect, useRef, useState } from "react";
 import type windowWrapper from "../../types/windowWrapper.types";
 import { motion, useDragControls, useMotionValue } from "motion/react";
 import "./windowWrapper.css";
-import useWindow from "../../store/windowStore";
-import type { position } from "../../types/windowStore.types";
+import type {
+  position,
+  UpdateDimensionTypes,
+} from "../../types/windowStore.types";
+import useWindowStore from "../../store/windowStore";
 
-const WindowWrapper = (props: windowWrapper) => {
+const WindowWrapper = ({ children, id }: windowWrapper) => {
+  const updateWindow = useWindowStore((state) => state.updateWindow);
+  const setActiveWindow = useWindowStore((state) => state.setActiveWindow);
+
+  const { height, width, position, x, y, zIndex } = useWindowStore(
+    (state) => state.windows[id],
+  );
+
+  const updateDimension: UpdateDimensionTypes = (width, height) => {
+    if (width !== undefined) {
+      updateWindow(id, { width: width });
+    }
+    if (height !== undefined) {
+      updateWindow(id, { height: height });
+    }
+  };
+
+  const setPosition = (position: position) => {
+    updateWindow(id, { position });
+  };
+
   const dragControls = useDragControls();
-  const { width, height, updateDimension, position, setPosition } = useWindow();
   const [isResizing, setIsResizing] = useState<boolean>(false);
-  const top = useMotionValue(50);
-  const left = useMotionValue(100);
+  const top = useMotionValue(y);
+  const left = useMotionValue(x);
+  const rafIdRef = useRef<number | null>(null);
   const [dragConstraints, setDragConstraints] = useState<{
     [key: string]: number;
   }>({});
@@ -41,53 +64,61 @@ const WindowWrapper = (props: windowWrapper) => {
     if (!isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const deltaY = e.clientY - dragRef.current.startY;
-      const deltaX = e.clientX - dragRef.current.startX;
-      const newHeight = dragRef.current.startHeight + deltaY;
-      const updatedNewHeight = dragRef.current.startHeight - deltaY;
-      const newWidth = dragRef.current.startWidth + deltaX;
-      const updatedNewWidth = dragRef.current.startWidth - deltaX;
-      const newTop = dragRef.current.startY + deltaY;
-      const newLeft = dragRef.current.startX + deltaX;
-      switch (position) {
-        case "e":
-          updateDimension(Math.max(newWidth, 300), undefined);
-          break;
-        case "s":
-          updateDimension(undefined, Math.max(newHeight, 300));
-          break;
-        case "n":
-          updateDimension(undefined, Math.max(updatedNewHeight, 300));
-          if (updatedNewHeight > 300) top.set(newTop);
-          break;
-        case "w":
-          updateDimension(Math.max(updatedNewWidth, 300), undefined);
-          if (updatedNewWidth > 300) left.set(newLeft);
-          break;
-        case "ne":
-          updateDimension(undefined, Math.max(updatedNewHeight, 300));
-          if (updatedNewHeight > 300) top.set(newTop);
-          updateDimension(Math.max(newWidth, 300), undefined);
-          break;
-        case "nw":
-          updateDimension(undefined, Math.max(updatedNewHeight, 300));
-          if (updatedNewHeight > 300) top.set(newTop);
-          updateDimension(Math.max(updatedNewWidth, 300), undefined);
-          if (updatedNewWidth > 300) left.set(newLeft);
-          break;
-        case "sw":
-          updateDimension(undefined, Math.max(newHeight, 300));
-          updateDimension(Math.max(updatedNewWidth, 300), undefined);
-          if (updatedNewWidth > 300) left.set(newLeft);
-          break;
-        case "se":
-          updateDimension(undefined, Math.max(newHeight, 300));
-          updateDimension(Math.max(newWidth, 300), undefined);
-          break;
-
-        default:
-          break;
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
       }
+
+      rafIdRef.current = requestAnimationFrame(() => {
+        const deltaY = e.clientY - dragRef.current.startY;
+        const deltaX = e.clientX - dragRef.current.startX;
+        const newHeight = Math.max(dragRef.current.startHeight + deltaY, 300);
+        const updatedNewHeight = Math.max(
+          dragRef.current.startHeight - deltaY,
+          300,
+        );
+        const newWidth = Math.max(dragRef.current.startWidth + deltaX, 300);
+        const updatedNewWidth = Math.max(
+          dragRef.current.startWidth - deltaX,
+          300,
+        );
+        const newTop = dragRef.current.startY + deltaY;
+        const newLeft = dragRef.current.startX + deltaX;
+        switch (position) {
+          case "e":
+            updateDimension(newWidth, undefined);
+            break;
+          case "s":
+            updateDimension(undefined, newHeight);
+            break;
+          case "n":
+            updateDimension(undefined, updatedNewHeight);
+            if (updatedNewHeight !== 300) top.set(newTop);
+            break;
+          case "w":
+            updateDimension(updatedNewWidth, undefined);
+            if (updatedNewWidth !== 300) left.set(newLeft);
+            break;
+          case "ne":
+            updateDimension(newWidth, updatedNewHeight);
+            if (updatedNewHeight !== 300) top.set(newTop);
+            break;
+          case "nw":
+            updateDimension(updatedNewWidth, updatedNewHeight);
+            if (updatedNewHeight !== 300) top.set(newTop);
+            if (updatedNewWidth !== 300) left.set(newLeft);
+            break;
+          case "sw":
+            updateDimension(updatedNewWidth, newHeight);
+            if (updatedNewWidth !== 300) left.set(newLeft);
+            break;
+          case "se":
+            updateDimension(newWidth, newHeight);
+            break;
+
+          default:
+            break;
+        }
+      });
     };
 
     const handleMouseUp = () => {
@@ -98,15 +129,11 @@ const WindowWrapper = (props: windowWrapper) => {
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isResizing]);
+  }, [isResizing, position, updateDimension, top, left]);
 
   return (
     <motion.section
+      onMouseDown={() => setActiveWindow(id)}
       drag
       dragControls={dragControls}
       dragListener={false}
@@ -115,6 +142,7 @@ const WindowWrapper = (props: windowWrapper) => {
       dragElastic={0}
       className="window"
       style={{
+        zIndex: zIndex,
         y: top,
         x: left,
         width: width + "px",
@@ -174,7 +202,7 @@ const WindowWrapper = (props: windowWrapper) => {
         }}
         className="window-top"
       ></motion.div>
-      <div>{props.children}</div>
+      <div className="window-app">{children}</div>
     </motion.section>
   );
 };

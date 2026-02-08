@@ -16,4 +16,17 @@ body {
   background-color: rgba(31, 30, 30, 0.938);
   height: 100vh;
   width: 100vw;
+}
+.main .demo-div {
+  height: 100%;
+  width: 100%;
+}
+.main .demo-div .demo-img {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  -o-object-fit: cover;
+     object-fit: cover;
+  -o-object-position: top left;
+     object-position: top left;
 }/*# sourceMappingURL=app.css.map */

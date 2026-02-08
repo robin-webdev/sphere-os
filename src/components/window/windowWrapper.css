@@ -6,10 +6,13 @@
 
 html,
 body .window {
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+  overflow: hidden;
   background-color: rgb(85, 85, 85);
   touch-action: none;
   position: absolute;
-  resize: horizontal;
 }
 html .resize-constraints,
 body .window .resize-constraints {
@@ -87,4 +90,9 @@ html .window-top,
 body .window .window-top {
   height: 25px;
   background-color: gray;
+}
+
+.window-app {
+  height: 100%;
+  width: 100%;
 }/*# sourceMappingURL=windowWrapper.css.map */
