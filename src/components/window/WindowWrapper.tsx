@@ -7,12 +7,14 @@ import type {
   UpdateDimensionTypes,
 } from "../../types/windowStore.types";
 import useWindowStore from "../../store/windowStore";
+import { animate } from "motion";
 
 const WindowWrapper = ({ children, id }: windowWrapper) => {
   const updateWindow = useWindowStore((state) => state.updateWindow);
   const setActiveWindow = useWindowStore((state) => state.setActiveWindow);
+  const deleteWindow = useWindowStore((state) => state.deleteWindow);
 
-  const { height, width, position, x, y, zIndex } = useWindowStore(
+  const { height, width, position, x, y, zIndex, isMinimized } = useWindowStore(
     (state) => state.windows[id],
   );
 
@@ -33,6 +35,8 @@ const WindowWrapper = ({ children, id }: windowWrapper) => {
   const [isResizing, setIsResizing] = useState<boolean>(false);
   const top = useMotionValue(y);
   const left = useMotionValue(x);
+  const windowWidth = useMotionValue(width);
+  const windowHeight = useMotionValue(height);
   const rafIdRef = useRef<number | null>(null);
   const [dragConstraints, setDragConstraints] = useState<{
     [key: string]: number;
@@ -58,6 +62,38 @@ const WindowWrapper = ({ children, id }: windowWrapper) => {
       startHeight: height,
       startY: evt.clientY,
     };
+  }
+
+  function handleMinimization() {
+    const targetY = document.body.offsetHeight;
+    const targetX = document.body.offsetWidth / 2 - width / 2;
+    const deltaY = targetY - y;
+    const deltaX = targetX - x;
+    animate(top, deltaY, { duration: 0.3 });
+    animate(left, deltaX, { duration: 0.3 });
+    updateWindow(id, { isMinimized: true });
+  }
+
+  function handleMaximization() {
+    const targetHeight = document.body.offsetHeight;
+    const targetWidth = document.body.offsetWidth;
+    animate(windowHeight, targetHeight, { duration: 0.1 });
+    animate(windowWidth, targetWidth, { duration: 0.1 });
+    animate(left, 0, { duration: 0.1 });
+    animate(top, 0, { duration: 0.1 });
+  }
+
+  function handleWindowDelete() {
+    const targetY = document.body.offsetHeight;
+    const targetX = document.body.offsetWidth / 2 - width / 2;
+    const deltaY = targetY - y;
+    const deltaX = targetX - x;
+    const animY = animate(top, deltaY, { duration: 0.3 });
+    const animX = animate(left, deltaX, { duration: 0.3 });
+    updateWindow(id, { isMinimized: true });
+    Promise.all([animX, animY]).then(() => {
+      deleteWindow(id);
+    });
   }
 
   useEffect(() => {
@@ -118,6 +154,8 @@ const WindowWrapper = ({ children, id }: windowWrapper) => {
           default:
             break;
         }
+        windowWidth.set(width);
+        windowHeight.set(height);
       });
     };
 
@@ -135,6 +173,10 @@ const WindowWrapper = ({ children, id }: windowWrapper) => {
     <motion.section
       onMouseDown={() => setActiveWindow(id)}
       drag
+      onDragStart={() => {
+        animate(windowWidth, width, { duration: 0.1 });
+        animate(windowHeight, height, { duration: 0.1 });
+      }}
       dragControls={dragControls}
       dragListener={false}
       dragMomentum={false}
@@ -145,9 +187,15 @@ const WindowWrapper = ({ children, id }: windowWrapper) => {
         zIndex: zIndex,
         y: top,
         x: left,
-        width: width + "px",
-        height: height + "px",
+        width: windowWidth,
+        height: windowHeight,
       }}
+      animate={
+        isMinimized && {
+          scale: 0,
+          transition: { duration: 0.3 },
+        }
+      }
     >
       {/* Resize Constraints -- */}
       <div
@@ -183,6 +231,19 @@ const WindowWrapper = ({ children, id }: windowWrapper) => {
         onMouseDown={(e) => handleResizeStart(e, "sw")}
       ></div>
       <motion.div
+        onDoubleClick={() => {
+          if (
+            document.body.offsetWidth === windowWidth.get() &&
+            document.body.offsetHeight === windowHeight.get()
+          ) {
+            animate(windowWidth, width, { duration: 0.1 });
+            animate(windowHeight, height, { duration: 0.1 });
+            animate(top, y, { duration: 0.1 });
+            animate(left, x, { duration: 0.1 });
+          } else {
+            handleMaximization();
+          }
+        }}
         onMouseDown={(e) => {
           const dimensions = {
             documentHeight: document.body.offsetHeight,
@@ -200,8 +261,22 @@ const WindowWrapper = ({ children, id }: windowWrapper) => {
         onPointerDown={(e) => {
           dragControls.start(e);
         }}
+        onPointerUp={() => {
+          if (
+            document.body.offsetWidth !== windowWidth.get() ||
+            document.body.offsetHeight !== windowHeight.get()
+          ) {
+            updateWindow(id, { y: top.get(), x: left.get() });
+          }
+        }}
         className="window-top"
-      ></motion.div>
+      >
+        <div className="controls">
+          <div className="red" onClick={handleWindowDelete}></div>
+          <div className="yellow" onClick={handleMinimization}></div>
+          <div className="green" onClick={handleMaximization}></div>
+        </div>
+      </motion.div>
       <div className="window-app">{children}</div>
     </motion.section>
   );

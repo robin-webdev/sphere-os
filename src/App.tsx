@@ -33,7 +33,7 @@ const App = () => {
               src="https://play-lh.googleusercontent.com/kDXJ6XA2Cm47lzDCvvu6HNCu0PWmTwZKiY0ldCWrCgXGT3Ms-lbP_WN1v5vknspnLT15=w526-h296-rw"
             />
           </div>
-        </WindowWrapper>
+        </WindowWrapper> 
       )}
     </div>
   );

@@ -16,6 +16,7 @@ body {
   background-color: rgba(31, 30, 30, 0.938);
   height: 100vh;
   width: 100vw;
+  position: relative;
 }
 .main .demo-div {
   height: 100%;

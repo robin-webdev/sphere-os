@@ -89,7 +89,30 @@ body .window .resize-sw {
 html .window-top,
 body .window .window-top {
   height: 25px;
-  background-color: gray;
+  background-color: rgba(128, 128, 128, 0.862);
+  display: flex;
+  align-items: center;
+}
+html .window-top .controls,
+body .window .window-top .controls {
+  padding-left: 7px;
+  display: flex;
+  gap: 5px;
+}
+html .window-top .controls .red,
+body .window .window-top .controls .red {
+  background-color: rgb(241, 56, 56);
+}
+html .window-top .controls .green,
+body .window .window-top .controls .green {
+  background-color: rgb(28, 199, 28);
+}
+html .window-top .controls > div,
+body .window .window-top .controls > div {
+  background-color: rgb(246, 246, 0);
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
 }
 
 .window-app {
